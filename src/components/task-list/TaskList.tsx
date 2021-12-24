@@ -1,50 +1,62 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TaskItem from "../task-item/TaskItem";
 import DoneItem from "../task-item/DoneItem";
+import axios from "axios";
+
+interface IListItem {
+  id: string;
+  name: string;
+  seq_num: number;
+  done: boolean;
+}
+
+const url = "https://task-manager-backend-nestjs.herokuapp.com/tasks";
+let initialList: IListItem[] = [];
 
 export default function TaskList() {
-
-  interface IListItem {
-    id: string;
-    name: string;
-    seq_num: number;
-    done: boolean;
-  }
-
+  
   const [List, setList] = useState<IListItem[]>([]);
   const [Sequence, setSequence] = useState<string[]>([]);
   const [DoneSequence, setDoneSequence] = useState<string[]>([]);
   const [EditingItem, setEditingItem] = useState(false);
 
+  useEffect(() => {
+    axios.get(url).then((response) => {
+      setList(response.data);
+      setSequence(List.filter(item => !item.done).map(item => item.id));
+      setDoneSequence(List.filter(item => item.done).map(item => item.id));
+    });
+  }, []);
+
   function addItem(name: string, seq_num: number) {
-    setEditingItem(true);
-    const id = Date.now().toString(36);
-    const newitem: IListItem = {
-      id: id,
-      name: name,
-      seq_num: seq_num,
-      done: false,
-    };
-    setSequence([...Sequence, newitem.id]);
-    setList([...List, newitem]);
+    axios.post(url, {name: name, seq_num: seq_num}).then((response) => {
+      // setEditingItem(true);
+      const newitem: IListItem = response.data;
+      setList([...List, newitem]);
+      setSequence([...Sequence, newitem.id]);
+    });
+    // const id = Date.now().toString(36);
+    // const newitem: IListItem = {
+    //   id: id,
+    //   name: name,
+    //   seq_num: seq_num,
+    //   done: false,
+    // };
     return;
   }
 
   function editItem(id: string, name: string, seq_num: number) {
     
-    // returns array index
-    const idx = List.findIndex(item => (id === item.id));
-    const newlist = List;
-    const newitem: IListItem = {
-      id: id,
-      name: name,
-      seq_num: seq_num,
-      done: List[idx].done,
-    };
-    newlist[idx] = newitem;
-    setList([...newlist]);
-
-    setEditingItem(false);
+    axios.patch(`${url}/${id}`, {name, seq_num}).then((response) => {
+      // returns array index
+      const idx = List.findIndex(item => (id === item.id));
+      const newlist = List;
+      const newitem: IListItem = response.data;
+      newlist[idx] = newitem;
+      setList([...newlist]);
+  
+      setEditingItem(false);
+    })
     return;
   }
 
@@ -52,26 +64,23 @@ export default function TaskList() {
     setList([...List.filter(item => item.id !== id)]);
     setSequence([...Sequence.filter(item => item !== id)]);
     setDoneSequence([...DoneSequence.filter(item => item !== id)]);
+    axios.delete(`${url}/${id}`);
   }
 
   function finishItem(id: string) {
 
-    function sendEmail() {
+    axios.patch(`${url}/${id}/done`).then((response) => {
+      const idx = List.findIndex(item => (id === item.id));
+      const newlist = List;
+      newlist[idx].done = true;
+      setList([...newlist]);
 
-    }
-
-    const finished: string = Sequence.find((item: string) => item === id) as string;
-    setDoneSequence([...DoneSequence, finished]);
-
-    const newsequence = Sequence.filter(item => item !== id);
-    setSequence([...newsequence]);
-
-    const idx = List.findIndex(item => (id === item.id));
-    const newlist = List;
-    newlist[idx].done = true;
-    setList([...newlist]);
-
-    sendEmail();
+      const finished: string = Sequence.find((item: string) => item === id) as string;
+      setDoneSequence([...DoneSequence, finished]);
+  
+      const newsequence = Sequence.filter(item => item !== id);
+      setSequence([...newsequence]);
+    })
   }
 
   function sortItems() {
@@ -91,6 +100,10 @@ export default function TaskList() {
   function clearHistory() {
     if (window.confirm("Clear all task history?")) {
       setList([...List.filter(item => DoneSequence.includes(item.id))]);
+      const newdonesequence = DoneSequence;
+      newdonesequence.forEach(id => {
+        axios.delete(`${url}/${id}`);
+      });
       setDoneSequence([]);
     }
   }
@@ -114,7 +127,7 @@ export default function TaskList() {
         </div>
         <button style={{width: '40%', height: 40, marginTop: 20, fontSize: 30,}} disabled={EditingItem} 
             onClick={e => {
-                addItem("", (Sequence.length ? Math.max(...Sequence.map(id => {
+                addItem("New task", (Sequence.length ? Math.max(...Sequence.map(id => {
                     const item: IListItem = List.find((item: IListItem) => item.id === id) as IListItem;
                     return item.seq_num;
                 }))+1 : 1));

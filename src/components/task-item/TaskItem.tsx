@@ -16,7 +16,7 @@ export default function TaskItem(props: taskitem_props) {
 
   const [Name, setName] = useState<string>(props.name);
   const [SeqNum, setSeqNum] = useState<number>(props.seq_num);
-  const [Edit, setEdit] = useState<boolean>(true);
+  const [Edit, setEdit] = useState<boolean>(false);
 
   function verifyInput() {
     // overall editing and this editing
@@ -41,8 +41,8 @@ export default function TaskItem(props: taskitem_props) {
     }
 
     // overall not editing
-    setEdit(true);
     props.isEditing(true);
+    setEdit(true);
 
   }
 
