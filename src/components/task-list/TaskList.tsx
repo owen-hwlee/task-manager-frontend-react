@@ -11,21 +11,29 @@ interface IListItem {
 }
 
 const url = "https://task-manager-backend-nestjs.herokuapp.com/tasks";
-let initialList: IListItem[] = [];
 
 export default function TaskList() {
   
+  const [Loaded, setLoaded] = useState<boolean>(false);
   const [List, setList] = useState<IListItem[]>([]);
-  const [Sequence, setSequence] = useState<string[]>([]);
-  const [DoneSequence, setDoneSequence] = useState<string[]>([]);
-  const [EditingItem, setEditingItem] = useState(false);
+  const [Sequence, setSequence] = useState<string[]>(List.filter(item => !item.done).map(item => item.id));
+  const [DoneSequence, setDoneSequence] = useState<string[]>(List.filter(item => item.done).map(item => item.id));
+  const [EditingItem, setEditingItem] = useState(true);
 
-  useEffect(() => {
-    axios.get(url).then((response) => {
-      setList(response.data);
-      setSequence(List.filter(item => !item.done).map(item => item.id));
+  const getData = async () => {
+    try {
+      const tasks = (await axios.get(url)).data;
+      console.log(tasks);
+      setList([...tasks]);
+      setSequence([...List.filter(item => !item.done).map(item => item.id)]);
       setDoneSequence(List.filter(item => item.done).map(item => item.id));
-    });
+      setEditingItem(false);
+      setLoaded(true);
+    } catch (error) {
+    }
+  }
+  useEffect(() => {
+    getData()
   }, []);
 
   function addItem(name: string, seq_num: number) {
@@ -115,7 +123,7 @@ export default function TaskList() {
         <div>
           <button style={{textAlign: 'right',}} disabled={Sequence.length===0 || EditingItem} onClick={e => {sortItems();}}>Sort</button>
         </div>
-        <div style={{marginTop: 20, display: "flex", flexDirection: 'column', alignItems: "center"}} >
+        <div style={{marginTop: 20, display: (Loaded ? 'flex' : 'none'), flexDirection: 'column', alignItems: "center"}} >
             {
                 [...Sequence].map((id) => {
                     const taskitem: IListItem = List.find(item => item.id === id) as IListItem;
@@ -139,7 +147,7 @@ export default function TaskList() {
         <div>
           <button style={{textAlign: 'right',}} disabled={DoneSequence.length===0} onClick={e => {clearHistory();}}>Clear history</button>
         </div>
-        <div style={{marginTop: 20, display: "flex", flexDirection: 'column', alignItems: "center"}} >
+        <div style={{marginTop: 20, display: (Loaded ? 'flex' : 'none'), flexDirection: 'column', alignItems: "center"}} >
             {
                 [...DoneSequence].map((id) => {
                     const taskitem: IListItem = List.find(item => item.id === id) as IListItem;
